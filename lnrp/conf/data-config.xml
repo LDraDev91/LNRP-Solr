@@ -1,0 +1,28 @@
+<dataConfig>
+  <dataSource type="JdbcDataSource"
+              driver="com.mysql.jdbc.Driver"
+              url="jdbc:mysql://localhost:3306/latenight"
+              user="website"
+              password="8j8AWjnahtSzADVd"/>
+  <document>
+    <entity name="product"
+      pk="id"
+      query="SELECT s.id, s.artist, s.title, sv.type AS `version`, s.updated, s.year, s.label, sg.name AS `formatted_genre`, sb.name AS `formatted_subgenre`, sv.bpm, (score / ratings) AS `rating`, IF(title REGEXP '\(.(Remix|Edit).\)', 0, 1) AS `original-mix`, IF(artist REGEXP '\(.(Feat).\)', 0, 1) AS `sole-artist`, CONCAT(s.artist, ' ', s.title, ' ', sv.type, ' ', s.label, ' ', s.year, IF(sg.name IS NULL, '', CONCAT(' ', sg.name)), IF(sb.name IS NULL, '', CONCAT(' ', sb.name))) AS `release-info` FROM latenight.songs s LEFT JOIN latenight.songs_versions sv ON s.id = sv.song LEFT JOIN latenight.songs_genres sg ON sg.id = s.genre_id LEFT JOIN latenight.songs_genres_sub sb ON sb.id = s.subgenre_id ORDER BY s.id"
+      deltaImportQuery="SELECT s.id, s.artist, s.title, sv.type AS `version`, s.updated, s.year, s.label, sg.name AS `formatted_genre`, sb.name AS `formatted_subgenre`, sv.bpm, (score / ratings) AS `rating`, IF(title REGEXP '\(.(Remix|Edit).\)', 0, 1) AS `original-mix`, IF(artist REGEXP '\(.(Feat).\)', 0, 1) AS `sole-artist`, CONCAT(s.artist, ' ', s.title, ' ', sv.type, ' ', s.label, ' ', s.year, IF(sg.name IS NULL, '', CONCAT(' ', sg.name)), IF(sb.name IS NULL, '', CONCAT(' ', sb.name))) AS `release-info` FROM latenight.songs s LEFT JOIN latenight.songs_versions sv ON s.id = sv.song LEFT JOIN latenight.songs_genres sg ON sg.id = s.genre_id LEFT JOIN latenight.songs_genres_sub sb ON sb.id = s.subgenre_id WHERE s.id = '${dih.delta.id}' ORDER BY s.id"
+      deltaQuery="SELECT s.id, s.artist, s.title, sv.type AS `version`, s.updated, s.year, s.label, sg.name AS `formatted_genre`, sb.name AS `formatted_subgenre`, sv.bpm, (score / ratings) AS `rating`, IF(title REGEXP '\(.(Remix|Edit).\)', 0, 1) AS `original-mix`, IF(artist REGEXP '\(.(Feat).\)', 0, 1) AS `sole-artist`, CONCAT(s.artist, ' ', s.title, ' ', sv.type, ' ', s.label, ' ', s.year, IF(sg.name IS NULL, '', CONCAT(' ', sg.name)), IF(sb.name IS NULL, '', CONCAT(' ', sb.name))) AS `release-info` FROM latenight.songs s LEFT JOIN latenight.songs_versions sv ON s.id = sv.song LEFT JOIN latenight.songs_genres sg ON sg.id = s.genre_id LEFT JOIN latenight.songs_genres_sub sb ON sb.id = s.subgenre_id WHERE s.updated > '${dih.last_index_time}' ORDER BY s.id"
+      >
+       <field column="id" name="id"/>
+       <field column="artist" name="artist"/>
+       <field column="title" name="title"/>
+       <field column="version" name="version"/>
+       <field column="year" name="year"/>
+       <field column="label" name="label"/>
+       <field column="formatted-genre" name="formatted-genre"/>
+       <field column="formatted-subgenre" name="formatted-subgenre"/>
+       <field column="rating" name="rating"/>
+       <field column="release-info" name="release-info"/>
+       <field column="original-mix" name="original-mix"/>
+       <field column="sole-artist" name="sole-artist"/>
+    </entity>
+  </document>
+</dataConfig>

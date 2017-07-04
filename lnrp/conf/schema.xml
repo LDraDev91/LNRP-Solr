@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<schema name="lnrp-search" version="1.5">
+    <fields>
+        <field name="_version_" type="long" indexed="true" stored="true"/>
+
+        <field name="id" type="string" indexed="true" stored="true" required="true" multiValued="false"/>
+        <field name="artist" type="string" indexed="true" stored="true"/>
+        <field name="title" type="string" indexed="true" stored="true"/>
+        <field name="version" type="string" indexed="true" stored="true"/>
+        <field name="year" type="int" indexed="true" stored="true"/>
+        <field name="label" type="string" indexed="true" stored="true"/>
+        <field name="formatted-genre" type="string" indexed="true" stored="true"/>
+        <field name="formatted-subgenre" type="string" indexed="true" stored="true"/>
+        <field name="rating" type="float" indexed="true" stored="true"/>
+        <field name="release-info" type="text_suggest" indexed="true" stored="true"/>
+        <field name="original-mix" type="int" indexed="true" stored="true"/>
+        <field name="sole-artist" type="int" indexed="true" stored="true"/>
+
+		<copyField source="release-info" dest="release-info-ac_edge"/>
+		<field name="release-info-ac_edge" type="autocomplete_edge" indexed="true" stored="false" />
+
+		<copyField source="release-info" dest="release-info-ac_ngram"/>
+		<field name="release-info-ac_ngram" type="autocomplete_ngram" indexed="true" stored="false" />
+
+		<copyField source="release-info" dest="release-info_phonetic"/>
+		<field name="release-info_phonetic" type="text_phonetic_do" indexed="true" stored="false" />
+    </fields>
+    <types>
+		<!-- text_suggest : Matches whole terms in the suggest text  -->
+		<fieldType name="text_suggest" class="solr.TextField" positionIncrementGap="100">
+			<analyzer type="index">
+				<charFilter class="solr.MappingCharFilterFactory" mapping="mapping-ISOLatin1Accent.txt"/>
+				<tokenizer class="solr.StandardTokenizerFactory"/>
+				<filter class="solr.WordDelimiterFilterFactory"
+					    generateWordParts="1"
+					    generateNumberParts="1"
+					    catenateWords="1"
+					    catenateNumbers="1"
+					    catenateAll="1"
+					    splitOnCaseChange="1"
+					    splitOnNumerics="1"
+					    preserveOriginal="1"
+                        types="worddelimitertypes.txt"
+				/>
+				<filter class="solr.LowerCaseFilterFactory"/>
+				<filter class="solr.PatternReplaceFilterFactory" pattern="([^\w\d\*æøåÆØÅ ])" replacement=" " replace="all"/>
+                <filter class="solr.SynonymFilterFactory" synonyms="synonyms.txt" ignoreCase="true" />
+			</analyzer>
+			<analyzer type="query">
+				<charFilter class="solr.MappingCharFilterFactory" mapping="mapping-ISOLatin1Accent.txt"/>
+				<tokenizer class="solr.StandardTokenizerFactory"/>
+				<filter class="solr.WordDelimiterFilterFactory"
+					    generateWordParts="0"
+					    generateNumberParts="0"
+					    catenateWords="0"
+					    catenateNumbers="0"
+					    catenateAll="0"
+					    splitOnCaseChange="0"
+					    splitOnNumerics="0"
+				/>
+				<filter class="solr.LowerCaseFilterFactory"/>
+				<filter class="solr.PatternReplaceFilterFactory" pattern="([^\w\d\*æøåÆØÅ ])" replacement=" " replace="all"/>
+                <filter class="solr.SynonymFilterFactory" synonyms="synonyms.txt" ignoreCase="true" />
+			</analyzer>
+		</fieldType>
+		<!-- text_phonetic_do : Matches a phonetic version of the suggest text, for a fuzzy effect
+		     Note that there are other phonetic algorithms as well, but this works pretty well
+		-->
+		<fieldType name="text_phonetic_do" class="solr.TextField" positionIncrementGap="100">
+			<analyzer type="index">
+				<tokenizer class="solr.StandardTokenizerFactory"/>
+                <filter class="solr.BeiderMorseFilterFactory" nameType="GENERIC" ruleType="APPROX" concat="true" languageSet="auto" />
+			</analyzer>
+		</fieldType>
+		<!-- autocomplete_edge : Will match from the left of the field, e.g. if the document field
+		     is "A brown fox" and the query is "A bro", it will match, but not "brown"
+		-->
+		<fieldType name="autocomplete_edge" class="solr.TextField">
+			<analyzer type="index">
+				<charFilter class="solr.MappingCharFilterFactory" mapping="mapping-ISOLatin1Accent.txt"/>
+				<tokenizer class="solr.KeywordTokenizerFactory"/>
+				<filter class="solr.LowerCaseFilterFactory"/>
+				<filter class="solr.PatternReplaceFilterFactory" pattern="([\.,;:-_])" replacement=" " replace="all"/>
+				<filter class="solr.EdgeNGramFilterFactory" maxGramSize="30" minGramSize="1"/>
+				<filter class="solr.PatternReplaceFilterFactory" pattern="([^\w\d\*æøåÆØÅ ])" replacement="" replace="all"/>
+			</analyzer>
+			<analyzer type="query">
+				<charFilter class="solr.MappingCharFilterFactory" mapping="mapping-ISOLatin1Accent.txt"/>
+				<tokenizer class="solr.KeywordTokenizerFactory"/>
+				<filter class="solr.LowerCaseFilterFactory"/>
+				<filter class="solr.PatternReplaceFilterFactory" pattern="([\.,;:-_])" replacement=" " replace="all"/>
+				<filter class="solr.PatternReplaceFilterFactory" pattern="([^\w\d\*æøåÆØÅ ])" replacement="" replace="all"/>
+				<filter class="solr.PatternReplaceFilterFactory" pattern="^(.{30})(.*)?" replacement="$1" replace="all"/>
+			</analyzer>
+		</fieldType>
+
+		<!-- autocomplete_ngram : Matches any word in the input field, with implicit right truncation.
+		     This means that the field "A brown fox" will be matched by query "bro".
+		     We use this to get partial matches, but these whould be boosted lower than exact and left-anchored
+		-->
+		<fieldType name="autocomplete_ngram" class="solr.TextField">
+			<analyzer type="index">
+				<charFilter class="solr.MappingCharFilterFactory" mapping="mapping-ISOLatin1Accent.txt"/>
+				<tokenizer class="solr.StandardTokenizerFactory"/>
+				<filter class="solr.WordDelimiterFilterFactory" generateWordParts="1" generateNumberParts="1" catenateWords="0" catenateNumbers="0" catenateAll="0" splitOnCaseChange="1"/>
+				<filter class="solr.LowerCaseFilterFactory"/>
+				<filter class="solr.EdgeNGramFilterFactory" maxGramSize="20" minGramSize="1"/>
+				<filter class="solr.PatternReplaceFilterFactory" pattern="([^\w\d\*æøåÆØÅ ])" replacement="" replace="all"/>
+			</analyzer>
+			<analyzer type="query">
+				<charFilter class="solr.MappingCharFilterFactory" mapping="mapping-ISOLatin1Accent.txt"/>
+				<tokenizer class="solr.StandardTokenizerFactory"/>
+				<filter class="solr.WordDelimiterFilterFactory" generateWordParts="0" generateNumberParts="0" catenateWords="0" catenateNumbers="0" catenateAll="0" splitOnCaseChange="0"/>
+				<filter class="solr.LowerCaseFilterFactory"/>
+				<filter class="solr.PatternReplaceFilterFactory" pattern="([^\w\d\*æøåÆØÅ ])" replacement="" replace="all"/>
+				<filter class="solr.PatternReplaceFilterFactory" pattern="^(.{20})(.*)?" replacement="$1" replace="all"/>
+			</analyzer>
+		</fieldType>
+        <!-- Define all the basic field types for consistency -->
+        <fieldType name="string" class="solr.StrField" sortMissingLast="true" omitNorms="true"/>
+        <fieldType name="boolean" class="solr.BoolField" sortMissingLast="true" omitNorms="true"/>
+        <fieldType name="booleans" class="solr.BoolField" sortMissingLast="true" multiValued="true"/>
+        <fieldtype name="binary" class="solr.BinaryField"/>
+        <fieldType name="int" class="solr.TrieIntField" precisionStep="0" omitNorms="true" positionIncrementGap="0"/>
+        <fieldType name="float" class="solr.TrieFloatField" precisionStep="0" omitNorms="true" positionIncrementGap="0"/>
+        <fieldType name="long" class="solr.TrieLongField" precisionStep="0" omitNorms="true" positionIncrementGap="0"/>
+        <fieldType name="double" class="solr.TrieDoubleField" precisionStep="0" omitNorms="true" positionIncrementGap="0"/>
+        <fieldType name="tint" class="solr.TrieIntField" precisionStep="8" omitNorms="true" positionIncrementGap="0"/>
+        <fieldType name="tfloat" class="solr.TrieFloatField" precisionStep="8" omitNorms="true" positionIncrementGap="0"/>
+        <fieldType name="tlong" class="solr.TrieLongField" precisionStep="8" omitNorms="true" positionIncrementGap="0"/>
+        <fieldType name="tlongs" class="solr.TrieLongField" precisionStep="8" omitNorms="true" positionIncrementGap="0" multiValued="true"/>
+        <fieldType name="tdouble" class="solr.TrieDoubleField" precisionStep="8" omitNorms="true" positionIncrementGap="0"/>
+        <fieldType name="tdoubles" class="solr.TrieDoubleField" precisionStep="8" omitNorms="true" positionIncrementGap="0" multiValued="true"/>
+        <fieldType name="date" class="solr.TrieDateField" omitNorms="true" precisionStep="0" positionIncrementGap="0"/>
+        <fieldType name="tdate" class="solr.TrieDateField" omitNorms="true" precisionStep="6" positionIncrementGap="0"/>
+        <fieldType name="tdates" class="solr.TrieDateField" docValues="true" precisionStep="6" positionIncrementGap="0" multiValued="true"/>
+    </types>
+    <uniqueKey>id</uniqueKey>
+</schema>
